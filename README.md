@@ -1,10 +1,25 @@
-> IMPORTANT NOTE: I don't have time to maintain this library (as some of you might have noticed). The PubMed API is a little chaotic, without a clear documentation and no single way of doing things, making it almost impossible to create a proper library. Feel free to create a fork or use the code for your own projects, however, I will archive this repository. Thanks to all contributers and users!
-
+> IMPORTANT NOTE: This fork implements a workaround to avoid the 10,000 entry limit in the PubMed API (For details see [PubMed documentation](https://www.ncbi.nlm.nih.gov/books/NBK25499/)).
+In order to work, the Unix command line tool [EDirect](https://www.ncbi.nlm.nih.gov/books/NBK179288/) needs to be installed (see installation details). 
+ 
 # PyMed - PubMed Access through Python
 PyMed is a Python library that provides access to PubMed through the PubMed API.
 
 ## Why this library?
 The PubMed API is not very well documented and querying it in a performant way is too complicated and time consuming for researchers. This wrapper provides access to the API in a consistent, readable and performant way.
+
+## Installation
+### EDirect installation
+EDirect can only be installed in Unix and Mac with the following commands on the terminal:
+``sh -c "$(wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"``
+As a convenience, the installation process ends by offering to run the PATH update command for you. Answer "y" and press the Return key if you want it run. If the PATH is already set correctly, or if you prefer to make any editing changes manually, just press Return.
+Once installation is complete, run:
+``export PATH=${HOME}/edirect:${PATH}``
+to set the PATH for the current terminal session.
+
+### Package installation
+To install the patch in this fork, clone this repository and install it from its local location by running:
+``python -m pip install -e.``
+> NOTE: if you will use pymed as a dependency of another package (e.g. paperscraper), make sure that the right implementation of pymed was installed. 
 
 ## Features
 This library takes care of the following for you:

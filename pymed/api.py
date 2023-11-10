@@ -1,5 +1,6 @@
 import datetime
 import requests
+import subprocess
 import itertools
 
 import xml.etree.ElementTree as xml
@@ -20,7 +21,7 @@ class PubMed(object):
     """
 
     def __init__(
-        self: object, tool: str = "my_tool", email: str = "my_email@example.com"
+            self: object, tool: str = "my_tool", email: str = "my_email@example.com"
     ) -> None:
         """ Initialization of the object.
 
@@ -207,37 +208,70 @@ class PubMed(object):
         # Make the first request to PubMed
         response = self._get(url="/entrez/eutils/esearch.fcgi", parameters=parameters)
 
-        # Add the retrieved IDs to the list
-        article_ids += response.get("esearchresult", {}).get("idlist", [])
-
         # Get information from the response
         total_result_count = int(response.get("esearchresult", {}).get("count"))
         retrieved_count = int(response.get("esearchresult", {}).get("retmax"))
 
-        # If no max is provided (-1) we'll try to retrieve everything
-        if max_results == -1:
-            max_results = total_result_count
+        # If the total number of results is more than 9999, we need to use the command line tool
+        if total_result_count > 9999:
 
-        # If not all articles are retrieved, continue to make requests untill we have everything
-        while retrieved_count < total_result_count and retrieved_count < max_results:
-
-            # Calculate a cut off point based on the max_results parameter
-            if (max_results - retrieved_count) < parameters["retmax"]:
-                parameters["retmax"] = max_results - retrieved_count
-
-            # Start the collection from the number of already retrieved articles
-            parameters["retstart"] = retrieved_count
-
-            # Make a new request
-            response = self._get(
-                url="/entrez/eutils/esearch.fcgi", parameters=parameters
+            # Make a request to the command line tool with the original query
+            # to fetch all the IDs of the articles matching the query
+            search_response = subprocess.Popen(
+                [
+                    "esearch",
+                    "-db",
+                    "pubmed",
+                    "-query",
+                    query,
+                ],
+                stdout=subprocess.PIPE,
             )
 
+            response = subprocess.Popen([
+                "efetch",
+                "-format",
+                "uid"
+            ],
+            stdin=search_response.stdout,
+            stdout=subprocess.PIPE)
+
+
+            # Get the response from the command line tool
+            output, error = response.communicate()
+
+            # Get the article IDs from the response
+            article_ids = output.decode('UTF-8').split("\n")[0:-1]
+
+        # Otherwise we can continue with the normal process
+        else:
             # Add the retrieved IDs to the list
             article_ids += response.get("esearchresult", {}).get("idlist", [])
 
-            # Get information from the response
-            retrieved_count += int(response.get("esearchresult", {}).get("retmax"))
+            # If no max is provided (-1) we'll try to retrieve everything
+            if max_results == -1:
+                max_results = total_result_count
+
+            # If not all articles are retrieved, continue to make requests untill we have everything
+            while retrieved_count < total_result_count and retrieved_count < max_results:
+
+                # Calculate a cut off point based on the max_results parameter
+                if (max_results - retrieved_count) < parameters["retmax"]:
+                    parameters["retmax"] = max_results - retrieved_count
+
+                # Start the collection from the number of already retrieved articles
+                parameters["retstart"] = retrieved_count
+
+                # Make a new request
+                response = self._get(
+                    url="/entrez/eutils/esearch.fcgi", parameters=parameters
+                )
+
+                # Add the retrieved IDs to the list
+                article_ids += response.get("esearchresult", {}).get("idlist", [])
+
+                # Get information from the response
+                retrieved_count += int(response.get("esearchresult", {}).get("retmax"))
 
         # Return the response
         return article_ids
